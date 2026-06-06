@@ -4,7 +4,8 @@ import numpy as np
 import argparse
 from model import Contrastive_learning_layer
 
-# === Define an MLP classifier (keep consistent with the training phase) ===
+# === Define the MLP classifier (consistent with the training phase) ===
+
 class MLPClassifier(nn.Module):
     def __init__(self, input_dim=128):
         super(MLPClassifier, self).__init__()
@@ -18,8 +19,34 @@ class MLPClassifier(nn.Module):
     def forward(self, x):
         return self.classifier(x)
 
+# -------------------------- Loss function --------------------------
 
-# === Load  model and make prediction ===
+class TripletCosineLoss(nn.Module):
+    def __init__(self, base_margin=0.2, max_epoch=300, adaptive=False):
+        super().__init__()
+        self.base_margin = base_margin
+        self.max_epoch = max_epoch
+        self.adaptive = adaptive
+        self.current_epoch = 0
+
+    def set_epoch(self, epoch):
+        self.current_epoch = epoch
+
+    def forward(self, anchor, positive, negative):
+        if self.adaptive:
+            margin = self.base_margin * (1 - self.current_epoch / self.max_epoch)
+        else:
+            margin = self.base_margin
+
+        pos_sim = F.cosine_similarity(anchor, positive)
+        neg_sim = F.cosine_similarity(anchor, negative)
+        loss = torch.clamp(neg_sim - pos_sim + margin, min=0.0)
+        return loss.mean()
+
+
+
+
+# === Load the model and make predictions. ===
 def predict(enzy_pt, smiles_pt, model_path, output_file=None, threshold=0.5, device=None):
     # Device settings
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -33,14 +60,23 @@ def predict(enzy_pt, smiles_pt, model_path, output_file=None, threshold=0.5, dev
     print(f"Loaded molecule embeddings: {smiles_embeddings.shape}")
 
     assert enzy_embeddings.shape[0] == smiles_embeddings.shape[0], \
-        "Error: enzyme 和 molecule 样本数量必须一致！"
+        "Error: The number of samples for enzyme and molecule must be consistent!"
 
     # === Load model ===
     checkpoint = torch.load(model_path, map_location=device)
     embedding_model = Contrastive_learning_layer().to(device)
     classifier = MLPClassifier(input_dim=128).to(device)
+    state_dict = checkpoint["classifier"]
 
-    embedding_model.load_state_dict(checkpoint["embedding_model"])
+    # Automatically infer the input dimension.
+    first_weight = state_dict[list(state_dict.keys())[0]]
+    input_dim = first_weight.shape[1]
+
+    print("Detected classifier input_dim =", input_dim)
+
+    classifier.load_state_dict(state_dict)
+
+    embedding_model.load_state_dict(checkpoint["embedding"])
     classifier.load_state_dict(checkpoint["classifier"])
     embedding_model.eval()
     classifier.eval()
@@ -61,7 +97,7 @@ def predict(enzy_pt, smiles_pt, model_path, output_file=None, threshold=0.5, dev
             probs.append(prob)
             preds.append(pred)
 
-    # === Output ===
+    # === Output results ===
     results = {
         "Probability": probs,
         "Prediction": preds
