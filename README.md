@@ -9,7 +9,7 @@ cd ConESI/Codes
 
 # 2. Install dependencies 
 ```bash
-conda env create -f MDCL.yml
+conda env create -f ConESI.yml
 ```
 
 # 3. Predict (CPU or GPU)
