@@ -76,48 +76,6 @@ def get_ds_for_triplet(train_data_anchor, train_data_positive, train_data_negati
 
     return train_loader,  val_loader, test_loader
 
-def run_validation(model, val_loader,loss_fn, device):
-    model.eval()
-    loss_sum = 0
-    num_batch = len(val_loader)
-    total_y_true=[]
-    total_y_pred=[]
-    total_y_prob=[]
-    for ESP_val_df_enzy,ESP_val_df_smiles, y_val in val_loader:
-
-        ESP_val_df_enzy = ESP_val_df_enzy.to(device)
-        ESP_val_df_smiles = ESP_val_df_smiles.to(device)
-        y_val = y_val.squeeze(1).to(device)
-
-        refined_enzy_embed, refined_smiles_embed = model(ESP_val_df_enzy,ESP_val_df_smiles)
-        cos_sim = torch.nn.functional.cosine_similarity(refined_enzy_embed, refined_smiles_embed, dim=1)
-        #loss = loss_fn(cos_sim, y_val).detach().cpu().numpy()
-        #loss_sum = loss_sum + loss # count all the loss in the training process
-        y_pred = (cos_sim > 0.5).float().cpu().numpy() # if score > 0.5, assign label 1 otherwise 0, transfer to cpu as numpy
-        total_y_true.append(y_val.cpu().numpy())
-        total_y_pred.append(y_pred)
-        total_y_prob.append(cos_sim.detach().cpu().numpy())
-
-    #loss_sum = loss_sum/num_batch # get the overall average loss (Notice: this method is not 100% accurate)
-
-    arrange_y_true = np.concatenate(total_y_true, axis=0)
-    arrange_y_pred = np.concatenate(total_y_pred, axis=0)
-    arrange_y_prob = np.concatenate(total_y_prob, axis=0)
-    tn,fp,fn,tp = confusion_matrix(arrange_y_true, arrange_y_pred).ravel()
-    acc = (tp+tn)/(tp+tn+fp+fn)
-    specificity = tn/(tn+fp)
-    sensitivity = tp/(tp+fn)
-    recall = tp/(tp+fn)
-    precision = tp/(tp+fp)
-    bacc = (sensitivity + specificity)/2
-    MCC = (tp*tn-fp*fn)/np.sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn))
-    AUC = roc_auc_score(arrange_y_true, arrange_y_prob)
-    f1 = 2*precision*recall/(precision+recall)
-    #print("loss_sum= ",loss_sum, "ACC= ",acc, "bacc= ",bacc, "precision= ",precision,"specificity= ",specificity, "sensitivity= ",sensitivity, "recall= ",recall, "MCC= ",MCC, "AUC= ",AUC, "f1= ",f1)
-    #return loss_sum, acc, bacc   # , precision, sensitivity, recall, MCC, AUC, f1
-    print("ACC= ",acc, "bacc= ",bacc, "precision= ",precision,"specificity= ",specificity, "sensitivity= ",sensitivity, "recall= ",recall, "MCC= ",MCC, "AUC= ",AUC, "f1= ",f1)
-    return acc, bacc   # , precision, sensitivity, recall, MCC, AUC, f1
-
 #================================================================================================lyy
 class TripletCosineLoss(nn.Module):
     def __init__(self, margin=0.2):  
