@@ -278,7 +278,7 @@ def train():
                 label_neg = torch.zeros_like(prob_neg)
                 loss_bce_neg = bce_loss_fn(prob_neg, label_neg)
 
-                # --- 总 loss ---
+                # --- Total loss ---
                 loss = loss_triplet + loss_bce_pos + loss_bce_neg
 
                 optimizer.zero_grad()

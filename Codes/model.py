@@ -7,7 +7,6 @@ class Contrastive_learning_layer(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # 原始网络结构保持不变
         self.enzy_refine_layer_1 = nn.Linear(2560, 2560)
         self.enzy_refine_layer_2 = nn.Linear(2560, 128)
 
@@ -20,7 +19,7 @@ class Contrastive_learning_layer(nn.Module):
         self.batch_norm_shared = nn.BatchNorm1d(128)
 
     # --------------------------------------------------------
-    # 单输入模式：Triplet Loss 使用（anchor / pos / neg）
+    # Single-input mode: Triplet Loss uses (anchor / pos / neg).
     # --------------------------------------------------------
     def encode_enzy(self, x):
         x = self.enzy_refine_layer_1(x)
@@ -39,11 +38,10 @@ class Contrastive_learning_layer(nn.Module):
         return F.normalize(x, dim=1)
 
     # --------------------------------------------------------
-    # 双输入模式：验证和测试使用
+    # Dual-input mode: used for validation and testing.
     # --------------------------------------------------------
     def encode_pair(self, enzy, smiles):
         return self.encode_enzy(enzy), self.encode_smiles(smiles)
 
-    # 保留 forward 兼容旧代码
     def forward(self, enzy, smiles):
         return self.encode_pair(enzy, smiles)
