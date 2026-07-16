@@ -8,6 +8,8 @@ cd ConESI/Codes
 ```
 
 # 2. Install dependencies 
+The prediction pipeline is fully compatible with CPU-only environments and does not require CUDA support. 
+GPU acceleration is recommended for model training and large-scale inference to improve computational efficiency.
 ```bash
 conda env create -f ConESI.yml
 ```
